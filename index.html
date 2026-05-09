@@ -413,8 +413,24 @@ button {
                             script.src = e.$ + moduleId + ".js";
                             script.onload = function() {
                                 window.log(`[LOADER] Module ${moduleId} loaded via script tag`);
-                                e[moduleId] = window[Object.keys(window).find(k => k.startsWith('m_'))];
-                                resolve(e[moduleId]);
+                                const moduleFactory = Object.keys(window).filter(k => k.startsWith('m_')).map(k => window[k]).find(v => typeof v === 'function');
+                                if (!moduleFactory) {
+                                    window.log(`[LOADER] ERROR: No module factory function found for ${moduleId}`);
+                                    reject(new Error(`No module factory found for ${moduleId}`));
+                                    return;
+                                }
+                                try {
+                                    e[moduleId] = moduleFactory();
+                                    if (!e[moduleId]) {
+                                        window.log(`[LOADER] ERROR: Module factory returned undefined for ${moduleId}`);
+                                        reject(new Error(`Module factory returned undefined for ${moduleId}`));
+                                        return;
+                                    }
+                                    resolve(e[moduleId]);
+                                } catch (err) {
+                                    window.log(`[LOADER] ERROR: Module initialization failed: ${err.message}`);
+                                    reject(err);
+                                }
                             };
                             script.onerror = function(err) {
                                 window.log(`[LOADER] Failed to load module ${moduleId}`);
