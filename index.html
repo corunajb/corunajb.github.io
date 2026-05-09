@@ -374,14 +374,22 @@
                 getModuleByURL: async function (moduleId) {
                     window.log(`[LOADER] Loading module: ${moduleId}...`);
                     if (moduleId in e == !1 && moduleId in MM == !1) {
-                        let I = moduleId;
-                        I = moduleId;
-                        const N = await (async function (M) {
-                            window.log("Loading " + M);
-                            const text = await (await fetch(e.$ + M + ".js")).text();
-                            return text;
-                        })(I);
-                        e[moduleId] = new Function(N)();
+                        // Load module via script tag to execute in global scope
+                        return new Promise((resolve, reject) => {
+                            const script = document.createElement('script');
+                            script.type = 'text/javascript';
+                            script.src = e.$ + moduleId + ".js";
+                            script.onload = function() {
+                                window.log(`[LOADER] Module ${moduleId} loaded via script tag`);
+                                e[moduleId] = window[Object.keys(window).find(k => k.startsWith('m_'))];
+                                resolve(e[moduleId]);
+                            };
+                            script.onerror = function(err) {
+                                window.log(`[LOADER] Failed to load module ${moduleId}`);
+                                reject(new Error(`Module load error: ${moduleId}`));
+                            };
+                            document.head.appendChild(script);
+                        });
                     }
                     return e[moduleId]
                 },
