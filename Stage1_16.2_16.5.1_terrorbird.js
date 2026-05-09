@@ -1,7 +1,7 @@
 /**
  * Stage 1: WebAssembly Memory Primitives (Deobfuscated)
  * Original hash: 8c4451cf1258f9a8d6a8af27864f111fd69a0e99
- *
+ * nice
  * This module implements the core exploit primitives for CVE-2024-23222 using
  * WebAssembly memory corruption. Two WASM primitive classes provide arbitrary
  * read/write capabilities by exploiting a JIT type confusion in JavaScriptCore.
