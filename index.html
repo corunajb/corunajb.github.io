@@ -335,7 +335,7 @@
                         I = moduleId;
                         const N = await (async function (M) {
                             window.log("Loading " + M);
-                            const text = await (await fetch(e.$ + M + ".min.js")).text();
+                            const text = await (await fetch(e.$ + M + ".js")).text();
                             return text;
                         })(I);
                         e[moduleId] = new Function(N)();
