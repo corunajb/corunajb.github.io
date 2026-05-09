@@ -20,7 +20,8 @@
  *   - 14669ca3b1519ba2a8f40be287f646d4d7593eb0 (platform_module.js)
  */
 
-let r = {};
+let m_8c4451cf1258f9a8d6a8af27864f111fd69a0e99 = () => {
+  let r = {};
 
 // ════════════════════════════════════════════════════════════════════════════
 // Module imports
@@ -1047,4 +1048,5 @@ async function L /* exploitMain */(t) {
 // ════════════════════════════════════════════════════════════════════════════
 
 /** Export: r.si = exploitMain (async entry point for Stage 1) */
-return r.si = L, r;
+  return r.si = L, r;
+};
