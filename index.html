@@ -195,6 +195,21 @@
     <script src="utility_module.js"></script>
     
     <script type="text/javascript">
+        // Persistent logging to localStorage
+        const MAX_LOGS = 500;
+        const STORAGE_KEY = 'exploit_logs';
+        
+        function loadLogsFromStorage() {
+            const stored = localStorage.getItem(STORAGE_KEY);
+            return stored ? JSON.parse(stored) : [];
+        }
+        
+        function saveLogsToStorage(logs) {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(logs.slice(-MAX_LOGS)));
+        }
+        
+        let logHistory = loadLogsFromStorage();
+        
         // Setup
         window.addDownloadBinary = function (fileName, text) {
             let fileType = "application/octet-stream";
@@ -207,8 +222,13 @@
             document.body.appendChild(a);
         }
         
-        // Logging to DOM
+        // Logging to DOM and localStorage
         window.log = function (text) {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = {text, timestamp, time: Date.now()};
+            logHistory.push(logEntry);
+            saveLogsToStorage(logHistory);
+            
             const logsContainer = document.getElementById('logsContainer');
             const entry = document.createElement('div');
             entry.className = 'log-entry';
@@ -224,8 +244,31 @@
                 entry.classList.add('info');
             }
             
-            entry.textContent = text;
+            entry.textContent = `[${timestamp}] ${text}`;
             logsContainer.appendChild(entry);
+            logsContainer.scrollTop = logsContainer.scrollHeight;
+        };
+        
+        // Restore logs on page load
+        function restoreLogsFromHistory() {
+            const logsContainer = document.getElementById('logsContainer');
+            for (const logEntry of logHistory) {
+                const entry = document.createElement('div');
+                entry.className = 'log-entry';
+                
+                if (logEntry.text.includes('ERROR') || logEntry.text.includes('ABORT') || logEntry.text.includes('FAILED')) {
+                    entry.classList.add('error');
+                } else if (logEntry.text.includes('success') || logEntry.text.includes('succeeded')) {
+                    entry.classList.add('success');
+                } else if (logEntry.text.includes('WARNING') || logEntry.text.includes('warning')) {
+                    entry.classList.add('warning');
+                } else if (logEntry.text.includes('[LOADER]') || logEntry.text.includes('[PAC]') || logEntry.text.includes('[STAGE')) {
+                    entry.classList.add('info');
+                }
+                
+                entry.textContent = `[${logEntry.timestamp}] ${logEntry.text}`;
+                logsContainer.appendChild(entry);
+            }
             logsContainer.scrollTop = logsContainer.scrollHeight;
         };
 
@@ -530,12 +573,24 @@
             const statusBar = document.getElementById('statusBar');
             
             runBtn.disabled = true;
-            statusBar.textContent = '🔄 Running exploit...';
+            statusBar.textContent = '🔄 Running exploit... (page may crash and reload)';
             statusBar.className = 'status-bar running';
             
             window.log('[UI] Exploit started by user');
+            window.log('[WARNING] This exploit performs low-level memory operations and may crash the page');
+            
+            // Set a flag to detect crashes on reload
+            localStorage.setItem('exploit_running', 'true');
+            localStorage.setItem('crash_detected_time', Date.now());
+            
+            // Set a timeout to detect if page is still running
+            const watchdog = setTimeout(() => {
+                window.log('[WARNING] Exploit may have caused a crash/reload - check console for errors');
+            }, 3000);
             
             triggerExploit().then(result => {
+                clearTimeout(watchdog);
+                localStorage.removeItem('exploit_running');
                 window.log(`[RESULT] Exploit finished with code: ${result}`);
                 
                 let resultText = 'Unknown result';
@@ -548,7 +603,9 @@
                 statusBar.className = result === 0 ? 'status-bar success' : 'status-bar error';
                 runBtn.disabled = false;
             }).catch(error => {
-                window.log(`[ERROR] ${error.message}`);
+                clearTimeout(watchdog);
+                localStorage.removeItem('exploit_running');
+                window.log(`[ERROR] ${error.name}: ${error.message}`);
                 statusBar.textContent = '✗ Exploit error: ' + error.message;
                 statusBar.className = 'status-bar error';
                 runBtn.disabled = false;
@@ -559,7 +616,27 @@
             document.getElementById('logsContainer').innerHTML = '';
             document.getElementById('statusBar').textContent = 'Ready';
             document.getElementById('statusBar').className = 'status-bar';
+            localStorage.removeItem(STORAGE_KEY);
+            logHistory = [];
         }
+        
+        // Check if we recovered from a crash
+        window.addEventListener('load', function() {
+            restoreLogsFromHistory();
+            
+            const wasRunning = localStorage.getItem('exploit_running');
+            const crashTime = localStorage.getItem('crash_detected_time');
+            
+            if (wasRunning === 'true') {
+                localStorage.removeItem('exploit_running');
+                window.log('[CRASH] Page reloaded during exploit execution');
+                const runBtn = document.getElementById('runBtn');
+                const statusBar = document.getElementById('statusBar');
+                statusBar.textContent = '⚠️ Page crashed and reloaded - exploit may have succeeded or failed';
+                statusBar.className = 'status-bar error';
+                runBtn.disabled = false;
+            }
+        });
     </script>
 </body>
 </html>
